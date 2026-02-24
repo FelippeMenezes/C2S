@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # Banco de Dados compartilhado
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: password
+
+  # Redis para o Sidekiq
+  redis:
+    image: redis:7-alpine
+
+  # 1. Serviço de Autenticação (Porta 3001)
+  auth-service:
+    build: ./auth-service
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3001 -b '0.0.0.0'"
+    volumes:
+      - ./auth-service:/app
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/auth_development
+      - RAILS_ENV=development
+
+  # 2. Serviço de Notificações (Porta 3002)
+  notification-service:
+    build: ./notification-service
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3002 -b '0.0.0.0'"
+    volumes:
+      - ./notification-service:/app
+    ports:
+      - "3002:3002"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/notification_development
+      - RAILS_ENV=development
+
+  # 3. Gerenciador de Scraping (Porta 3000)
+  webscraping-manager:
+    build: ./webscraping-manager
+    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+    volumes:
+      - ./webscraping-manager:/app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+      - auth-service
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/manager_development
+      - REDIS_URL=redis://redis:6379/1
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3002
+      - RAILS_ENV=development
+
+  # 4. Worker do Sidekiq (Roda o código do Manager em background)
+  sidekiq:
+    build: ./webscraping-manager
+    command: bundle exec sidekiq
+    volumes:
+      - ./webscraping-manager:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/manager_development
+      - REDIS_URL=redis://redis:6379/1
+
+volumes:
+  postgres_data:
