@@ -1,1 +1,32 @@
-tmp/
+# Bundler
+/vendor/bundle
+
+# Logs
+**/log/*
+!**/log/.keep
+
+# Temp files
+**/tmp/*
+!**/tmp/.keep
+
+# Storage (Active Storage local)
+**/storage/*
+!**/storage/.keep
+
+# Database (SQLite local)
+**/db/*.sqlite3
+**/db/*.sqlite3-journal
+
+# Environment variables
+.env
+.env.*
+
+# Credentials
+/config/master.key
+
+# Node
+**/node_modules/
+
+# System files
+.DS_Store
+*.swp
