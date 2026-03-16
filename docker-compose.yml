@@ -24,6 +24,7 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:password@db:5432/auth_development
       - RAILS_ENV=development
+      - JWT_SECRET_KEY=c2s
 
   # 2. Serviço de Notificações (Porta 3002)
   notification-service:
@@ -38,6 +39,7 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:password@db:5432/notification_development
       - RAILS_ENV=development
+      - JWT_SECRET_KEY=c2s
 
   # 3. Gerenciador de Scraping (Porta 3000)
   webscraping-manager:
@@ -71,6 +73,24 @@ services:
     environment:
       - DATABASE_URL=postgres://postgres:password@db:5432/manager_development
       - REDIS_URL=redis://redis:6379/1
+      - RAILS_ENV=development
+      - JWT_SECRET_KEY=c2s
+
+  # 5. Worker do Notification Service
+  notification-worker:
+    build:
+      context: ./notification-service
+    command: bundle exec sidekiq
+    volumes:
+      - ./notification-service:/rails
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgres://postgres:password@db:5432/notification_development
+      - REDIS_URL=redis://redis:6379/1
+      - RAILS_ENV=development
+      - JWT_SECRET_KEY=c2s
 
 volumes:
   postgres_data:
